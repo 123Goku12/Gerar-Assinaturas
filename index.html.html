@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de Assinaturas — Grupo INAL</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- JSZip para geração de arquivos .zip em lote -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #022653;
+    --green: #006F46;
+    --wine: #8e4249;
+    --surface: #f5f6f8;
+    --card: #ffffff;
+    --border: #e2e5eb;
+    --text: #1a1d23;
+    --muted: #6b7280;
+    --accent: #022653;
+    --radius: 14px;
+    --shadow: 0 2px 16px rgba(2,38,83,.07);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 28px 40px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  header .logo-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  header .logo-icon {
+    width: 42px;
+    height: 42px;
+    background: rgba(255,255,255,.13);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  header .logo-icon svg { width: 22px; height: 22px; fill: #fff; }
+
+  header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -.3px;
+  }
+
+  header p {
+    font-size: 13px;
+    opacity: .65;
+    margin-top: 2px;
+  }
+
+  /* Abas de modo (Individual / Lote) */
+  .mode-tabs {
+    display: flex;
+    background: rgba(255,255,255,.08);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+  }
+  .mode-tab {
+    background: transparent;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    opacity: .65;
+    transition: background .18s, opacity .18s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mode-tab svg { width: 14px; height: 14px; }
+  .mode-tab.active {
+    background: rgba(255,255,255,.18);
+    opacity: 1;
+  }
+  .mode-tab:hover:not(.active) { opacity: .85; }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .container.single-col {
+    grid-template-columns: 1fr;
+    max-width: 760px;
+  }
+
+  @media (max-width: 700px) {
+    .container { grid-template-columns: 1fr; }
+    header { padding: 20px 20px 18px; }
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-header .step {
+    width: 28px;
+    height: 28px;
+    background: var(--navy);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .card-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .card-body { padding: 22px 24px; }
+
+  .field { margin-bottom: 18px; }
+  .field:last-child { margin-bottom: 0; }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="file"],
+  select,
+  textarea {
+    width: 100%;
+    height: 44px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    padding: 0 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    background: #fafbfd;
+    transition: border-color .18s, box-shadow .18s;
+    outline: none;
+    appearance: none;
+  }
+
+  input[type="file"] {
+    padding: 10px 14px;
+    height: auto;
+    cursor: pointer;
+  }
+
+  input:focus, select:focus {
+    border-color: var(--navy);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(2,38,83,.08);
+  }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 38px;
+    cursor: pointer;
+  }
+
+  .hidden { display: none !important; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #f8f9fc;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color .15s;
+  }
+
+  .toggle-row:hover { border-color: #c5cad6; }
+
+  .toggle-row span {
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .toggle-switch {
+    width: 42px;
+    height: 24px;
+    background: #d1d5db;
+    border-radius: 999px;
+    position: relative;
+    transition: background .2s;
+    flex-shrink: 0;
+  }
+
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  }
+
+  .toggle-switch.on { background: var(--navy); }
+  .toggle-switch.on::after { transform: translateX(18px); }
+
+  .preview-card { position: sticky; top: 24px; }
+
+  .preview-area {
+    background: #f0f2f5;
+    border-radius: 10px;
+    padding: 24px;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .preview-area .empty-state {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .preview-area .empty-state svg {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto 8px;
+    display: block;
+    opacity: .35;
+  }
+
+  #preview-frame {
+    width: 100%;
+    border: none;
+    background: transparent;
+    display: block;
+  }
+
+  .btn-generate, .btn-secondary, .btn-download, .btn-batch {
+    width: 100%;
+    height: 50px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .18s, transform .1s, opacity .18s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+  }
+
+  .btn-generate { background: var(--navy); color: #fff; margin-top: 8px; }
+  .btn-generate:hover { background: #033170; }
+  .btn-generate:active { transform: scale(.98); }
+
+  .btn-secondary {
+    background: #fff;
+    color: var(--navy);
+    border: 1.5px solid var(--navy);
+    margin-top: 10px;
+  }
+  .btn-secondary:hover { background: #f0f3f8; }
+  .btn-secondary:active { transform: scale(.98); }
+
+  .btn-download {
+    background: #10a06b;
+    color: #fff;
+    margin-top: 10px;
+  }
+  .btn-download:hover { background: #0d8a5c; }
+  .btn-download:active { transform: scale(.98); }
+  .btn-download.hidden { display: none !important; }
+
+  .btn-batch {
+    background: var(--green);
+    color: #fff;
+    margin-top: 6px;
+  }
+  .btn-batch:hover { background: #00583a; }
+  .btn-batch:active { transform: scale(.98); }
+  .btn-batch:disabled { opacity: .6; cursor: not-allowed; }
+
+  .btn-link {
+    background: none;
+    border: none;
+    color: var(--navy);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 4px 0;
+  }
+  .btn-link:hover { color: #033170; }
+
+  .instructions {
+    margin-top: 16px;
+    background: #eef6f1;
+    border: 1px solid #c3e0d0;
+    border-radius: 9px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #1a4a31;
+    line-height: 1.55;
+  }
+
+  .instructions strong { font-weight: 600; }
+  .instructions.hidden { display: none !important; }
+
+  .instructions ol { padding-left: 16px; margin-top: 6px; }
+  .instructions ol li { margin-bottom: 3px; }
+
+  .info-box {
+    background: #f0f5fb;
+    border: 1px solid #cfdcec;
+    border-radius: 9px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #1c3a5e;
+    line-height: 1.55;
+    margin-bottom: 18px;
+  }
+
+  .info-box strong { font-weight: 600; }
+  .info-box code {
+    background: #fff;
+    border: 1px solid #d8e2ef;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--navy);
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 18px 0;
+  }
+
+  .field-hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+
+  /* Resultados do lote */
+  .batch-results {
+    margin-top: 18px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    overflow: hidden;
+  }
+  .batch-results-header {
+    background: #f8f9fc;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+  }
+  .batch-results-header .count-ok { color: #006F46; font-weight: 600; }
+  .batch-results-header .count-err { color: #b91c1c; font-weight: 600; }
+  .batch-list {
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .batch-row {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .batch-row:last-child { border-bottom: none; }
+  .batch-row .status {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #fff;
+    font-weight: bold;
+  }
+  .status-ok { background: #10a06b; }
+  .status-err { background: #b91c1c; }
+  .batch-row .info { flex: 1; min-width: 0; }
+  .batch-row .info b { font-weight: 600; }
+  .batch-row .info small { display: block; color: var(--muted); font-size: 11px; }
+  .batch-row .err-msg { color: #b91c1c; font-size: 11px; margin-top: 2px; }
+
+  .progress-bar {
+    height: 6px;
+    background: #e2e5eb;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width .2s ease;
+    width: 0%;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-group">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+    </div>
+    <div>
+      <h1>Gerador de Assinaturas</h1>
+      <p>Crie sua assinatura de e-mail profissional</p>
+    </div>
+  </div>
+
+  <div class="mode-tabs" role="tablist">
+    <button class="mode-tab active" id="tab-individual" onclick="switchMode('individual')" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Individual
+    </button>
+    <button class="mode-tab" id="tab-lote" onclick="switchMode('lote')" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Lote (CSV)
+    </button>
+  </div>
+</header>
+
+<!-- ============================================ -->
+<!-- MODO INDIVIDUAL                              -->
+<!-- ============================================ -->
+<div class="container" id="mode-individual">
+
+  <!-- COLUNA ESQUERDA: FORMULÁRIO -->
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <div class="step">1</div>
+        <h2>Selecione a empresa</h2>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>Empresa</label>
+          <select id="empresa" onchange="onEmpresaChange()">
+            <option value="">— Selecione —</option>
+            <option value="maxs">Max's Ótica</option>
+            <option value="cema">CEMA</option>
+            <option value="cema_unidade">CEMA Unidades</option>
+            <option value="oculos_cia">Óculos e CIA Unidades</option>
+            <option value="so_oculos">Só Óculos</option>
+            <option value="instituto">Instituto</option>
+            <option value="inal">Grupo INAL</option>
+          </select>
+        </div>
+        <div class="field hidden" id="field-unidade">
+          <label>Nome da unidade</label>
+          <input type="text" id="unidade" placeholder="Ex: Campinas, Ribeirão Preto…" oninput="updatePreview()">
+          <p class="field-hint">Digite o nome da unidade que aparecerá abaixo do logo.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:16px"></div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="step">2</div>
+        <h2>Dados do colaborador</h2>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label>Nome completo</label>
+          <input type="text" id="nome" placeholder="Ex: Ana Paula Silva" oninput="updatePreview()">
+        </div>
+        <div class="field">
+          <label>Cargo</label>
+          <input type="text" id="cargo" placeholder="Ex: Gerente Comercial" oninput="updatePreview()">
+        </div>
+        <div class="field">
+          <label>E-mail</label>
+          <input type="email" id="email" placeholder="colaborador@empresa.com.br" oninput="updatePreview()">
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>Telefone / Ramal</label>
+          <div class="toggle-row" onclick="toggleTelefone()">
+            <span>O colaborador possui telefone ou ramal?</span>
+            <div class="toggle-switch" id="toggle-tel"></div>
+          </div>
+        </div>
+
+        <div class="field hidden" id="field-telefone">
+          <label>Número + Ramal</label>
+          <input type="text" id="telefone" placeholder="Ex: (11) 3456-7890 | Ramal 210" oninput="updatePreview()">
+        </div>
+      </div>
+    </div>
+
+    <div style="height:16px"></div>
+
+    <button class="btn-generate" onclick="generateSignature()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Gerar Assinatura
+    </button>
+
+    <button class="btn-secondary" onclick="resetForm()" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      Gerar Nova / Limpar Formulário
+    </button>
+  </div>
+
+  <!-- COLUNA DIREITA: PREVIEW + DOWNLOAD -->
+  <div class="preview-card">
+    <div class="card">
+      <div class="card-header">
+        <div class="step">3</div>
+        <h2>Pré-visualização</h2>
+      </div>
+      <div class="card-body">
+        <div class="preview-area" id="preview-area">
+          <div class="empty-state" id="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>
+            Preencha os dados ao lado<br>para visualizar a assinatura
+          </div>
+          <iframe id="preview-frame" class="hidden" scrolling="no"></iframe>
+        </div>
+      </div>
+    </div>
+
+    <a id="btn-download" class="btn-download hidden" href="#" download>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Baixar Assinatura (.html)
+    </a>
+
+    <div class="instructions hidden" id="instructions">
+      <strong>Como usar sua assinatura:</strong>
+      <ol>
+        <li>Baixe o arquivo clicando no botão acima.</li>
+        <li>Abra o arquivo baixado em qualquer navegador (Chrome, Edge, Firefox).</li>
+        <li>Selecione toda a assinatura (Ctrl+A ou Cmd+A) e copie (Ctrl+C ou Cmd+C).</li>
+        <li>No seu e-mail, acesse <em>Configurações → Assinatura</em> e cole (Ctrl+V ou Cmd+V).</li>
+      </ol>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================ -->
+<!-- MODO LOTE (CSV)                              -->
+<!-- ============================================ -->
+<div class="container single-col hidden" id="mode-lote">
+  <div class="card">
+    <div class="card-header">
+      <div class="step"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <h2>Lançamento em lote por CSV</h2>
+    </div>
+    <div class="card-body">
+
+      <div class="info-box">
+        <strong>📋 Instruções:</strong>
+        <ol style="padding-left:16px;margin-top:6px;">
+          <li>Baixe o modelo CSV abaixo e preencha com os dados dos colaboradores.</li>
+          <li>Colunas esperadas: <code>empresa</code>, <code>unidade</code>, <code>nome</code>, <code>cargo</code>, <code>email</code>, <code>telefone</code>.</li>
+          <li>Valores válidos para <code>empresa</code>: <code>maxs</code>, <code>cema</code>, <code>cema_unidade</code>, <code>oculos_cia</code>, <code>so_oculos</code>, <code>instituto</code>, <code>inal</code>.</li>
+          <li>Os campos <code>unidade</code> e <code>telefone</code> podem ficar em branco quando não se aplicarem.</li>
+          <li>Faça upload do arquivo preenchido e clique em <strong>Processar lote</strong> — será gerado um <code>.zip</code> com todas as assinaturas.</li>
+        </ol>
+      </div>
+
+      <button class="btn-link" onclick="downloadCsvTemplate()" type="button">
+        ⬇ Baixar modelo CSV
+      </button>
+
+      <div class="divider"></div>
+
+      <div class="field">
+        <label>Arquivo CSV dos colaboradores</label>
+        <input type="file" id="csv-file" accept=".csv,text/csv" onchange="onCsvSelected()">
+        <p class="field-hint" id="csv-info">Aceita arquivos UTF-8 separados por vírgula (,) ou ponto-e-vírgula (;).</p>
+      </div>
+
+      <button class="btn-batch" id="btn-process-batch" onclick="processBatch()" disabled type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span id="btn-process-label">Processar lote</span>
+      </button>
+
+      <div class="progress-bar hidden" id="progress-wrap">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+
+      <div class="batch-results hidden" id="batch-results">
+        <div class="batch-results-header">
+          <span>
+            <span class="count-ok" id="count-ok">0 sucesso</span>
+            &nbsp;·&nbsp;
+            <span class="count-err" id="count-err">0 erro(s)</span>
+          </span>
+          <a id="btn-download-zip" class="btn-link hidden" href="#" download>⬇ Baixar .zip de assinaturas</a>
+        </div>
+        <div class="batch-list" id="batch-list"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================
+   ESTADO GLOBAL
+   ============================================ */
+var telOn = false;
+var lastBlob = null;
+var lastZipBlob = null;
+
+var EMPRESAS_VALIDAS = ['maxs','cema','cema_unidade','oculos_cia','so_oculos','instituto','inal'];
+var EMPRESAS_COM_UNIDADE = ['cema_unidade','oculos_cia'];
+
+/* ============================================
+   ABAS (INDIVIDUAL / LOTE)
+   ============================================ */
+function switchMode(mode) {
+  document.getElementById('mode-individual').classList.toggle('hidden', mode !== 'individual');
+  document.getElementById('mode-lote').classList.toggle('hidden', mode !== 'lote');
+  document.getElementById('tab-individual').classList.toggle('active', mode === 'individual');
+  document.getElementById('tab-lote').classList.toggle('active', mode === 'lote');
+}
+
+/* ============================================
+   MODO INDIVIDUAL
+   ============================================ */
+function onEmpresaChange() {
+  var empresa = document.getElementById('empresa').value;
+  var hasUnidade = EMPRESAS_COM_UNIDADE.indexOf(empresa) !== -1;
+  document.getElementById('field-unidade').classList.toggle('hidden', !hasUnidade);
+  updatePreview();
+}
+
+function toggleTelefone() {
+  telOn = !telOn;
+  document.getElementById('toggle-tel').classList.toggle('on', telOn);
+  document.getElementById('field-telefone').classList.toggle('hidden', !telOn);
+  updatePreview();
+}
+
+function getValues() {
+  return {
+    empresa: document.getElementById('empresa').value,
+    unidade: document.getElementById('unidade').value.trim(),
+    nome: document.getElementById('nome').value.trim(),
+    cargo: document.getElementById('cargo').value.trim(),
+    email: document.getElementById('email').value.trim(),
+    telefone: telOn ? document.getElementById('telefone').value.trim() : '',
+    hasTel: telOn
+  };
+}
+
+/* ============================================
+   TEMPLATES DE ASSINATURA (compartilhados)
+   ============================================ */
+function buildSignatureHTML(v) {
+  var templates = {
+    maxs: buildMaxs,
+    cema: buildCema,
+    cema_unidade: buildCemaUnidade,
+    oculos_cia: buildOculosCia,
+    so_oculos: buildSoOculos,
+    instituto: buildInstituto,
+    inal: buildInal
+  };
+  var fn = templates[v.empresa];
+  return fn ? fn(v) : '';
+}
+
+function phoneRow(color, tel) {
+  if (!tel) return '';
+  return `<tr>
+    <td width="18" valign="middle" style="width:18px;padding-bottom:3px;">
+      <img src="https://img.icons8.com/ios-filled/50/${color.replace('#','')}/phone.png" width="12" style="display:block;width:12px;max-width:12px;border:none;">
+    </td>
+    <td valign="middle" style="padding-bottom:3px;font-family:Arial,sans-serif;">
+      <span style="font-size:8pt;color:${color};">${escHtml(tel)}</span>
+    </td>
+  </tr>`;
+}
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function rightCol(color, v) {
+  return `<td valign="middle" style="padding-left:12px;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr><td style="padding-bottom:1px;font-family:Arial,sans-serif;">
+        <span style="font-size:10pt;color:${color};font-weight:bold;">${escHtml(v.nome||'Nome do Colaborador')}</span>
+      </td></tr>
+      <tr><td style="padding-bottom:8px;font-family:Arial,sans-serif;">
+        <span style="font-size:8pt;color:#555555;">${escHtml(v.cargo||'Cargo do Colaborador')}</span>
+      </td></tr>
+    </table>
+    <table border="0" cellpadding="0" cellspacing="0">
+      ${phoneRow(color, v.telefone)}
+      <tr>
+        <td width="18" valign="middle" style="width:18px;padding-bottom:3px;">
+          <img src="https://img.icons8.com/ios-filled/50/${color.replace('#','')}/new-post.png" width="12" style="display:block;width:12px;max-width:12px;border:none;">
+        </td>
+        <td valign="middle" style="padding-bottom:3px;font-family:Arial,sans-serif;">
+          <a href="mailto:${escHtml(v.email||'email@empresa.com.br')}" style="font-size:8pt;color:${color};text-decoration:none;">${escHtml(v.email||'email@empresa.com.br')}</a>
+        </td>
+      </tr>
+      <tr>
+        <td width="18" valign="middle" style="width:18px;">
+          <img src="https://img.icons8.com/ios-filled/50/${color.replace('#','')}/globe--v1.png" width="12" style="display:block;width:12px;max-width:12px;border:none;">
+        </td>
+        <td valign="middle" style="font-family:Arial,sans-serif;">
+          <a href="https://www.cemahospital.com.br" target="_blank" style="font-size:8pt;color:${color};text-decoration:none;">www.cemahospital.com.br</a>
+        </td>
+      </tr>
+    </table>
+  </td>`;
+}
+
+function wrapTable(inner) {
+  return `<table border="0" cellpadding="0" cellspacing="0" width="450" style="width:450px;font-family:Arial,sans-serif;background-color:#ffffff;"><tr>${inner}</tr></table>`;
+}
+
+function divider(color) {
+  return `<td width="2" valign="middle" style="width:2px;background-color:${color};font-size:1px;line-height:1px;">&nbsp;</td>`;
+}
+
+function buildCema(v) {
+  var logoCol = `<td width="90" valign="middle" align="center" style="width:90px;padding-right:12px;">
+    <img src="https://res.cloudinary.com/dljjmxyef/image/upload/v1772628137/CEMALOGO_Redondo_errzri.png" alt="CEMA" width="90" style="display:block;width:90px;max-width:90px;border:none;outline:none;">
+  </td>`;
+  return wrapTable(logoCol + divider('#006F46') + rightCol('#006F46', v));
+}
+
+function buildCemaUnidade(v) {
+  var uni = v.unidade || 'UNIDADE';
+  var logoCol = `<td width="90" valign="middle" align="center" style="width:90px;padding-right:12px;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr><td align="center" style="padding-bottom:4px;">
+        <img src="https://res.cloudinary.com/dljjmxyef/image/upload/v1772628137/CEMALOGO_Redondo_errzri.png" width="90" style="display:block;width:90px;max-width:90px;border:none;outline:none;">
+      </td></tr>
+      <tr><td align="center" style="font-family:Arial,sans-serif;">
+        <span style="font-size:9pt;color:#006833;font-weight:bold;">${escHtml(uni)}</span>
+      </td></tr>
+    </table>
+  </td>`;
+  return wrapTable(logoCol + divider('#006F46') + rightCol('#006F46', v));
+}
+
+function buildOculosCia(v) {
+  var uni = v.unidade || 'UNIDADE';
+  var logoCol = `<td width="90" valign="middle" align="center" style="width:90px;padding-right:12px;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr><td align="center" style="padding-bottom:4px;">
+        <img src="https://res.cloudinary.com/dljjmxyef/image/upload/v1779790763/_2935088987680_xr7fph.png" width="90" style="display:block;width:90px;max-width:90px;border:none;outline:none;">
+      </td></tr>
+      <tr><td align="center" style="font-family:Arial,sans-serif;">
+        <span style="font-size:9pt;color:#022653;font-weight:bold;">${escHtml(uni)}</span>
+      </td></tr>
+    </table>
+  </td>`;
+  return wrapTable(logoCol + divider('#022653') + rightCol('#022653', v));
+}
+
+function buildMaxs(v) {
+  var logoCol = `<td width="90" valign="middle" align="center" style="width:90px;padding-right:12px;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr><td align="center" style="padding-bottom:4px;">
+        <img src="https://res.cloudinary.com/dljjmxyef/image/upload/v1779790937/modelos_ASSINATURAS_2_imoaya.png" width="90" style="display:block;width:90px;max-width:90px;border:none;outline:none;">
+      </td></tr>
+      <tr><td align="center" style="font-family:Arial,sans-serif;">
+        <span style="font-size:9pt;color:#022653;font-weight:bold;"></span>
+      </td></tr>
+    </table>
+  </td>`;
+  return wrapTable(logoCol + divider('#022653') + rightCol('#022653', v));
+}
+
+function buildSoOculos(v) {
+  var logoCol = `<td width="90" valign="middle" align="center" style="width:90px;padding-right:12px;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr><td align="center" style="padding-bottom:4px;">
+        <img src="https://res.cloudinary.com/dljjmxyef/image/upload/v1779790763/_2934674903472_qdpqlh.png" width="90" style="display:block;width:90px;max-width:90px;border:none;outline:none;">
+      </td></tr>
+      <tr><td align="center" style="font-family:Arial,sans-serif;">
+        <span style="font-size:9pt;color:#8e4249;font-weight:bold;"></span>
+      </td></tr>
+    </table>
+  </td>`;
+  return wrapTable(logoCol + divider('#8e4249') + rightCol('#8e4249', v));
+}
+
+function buildInstituto(v) {
+  var logoCol = `<td width="90" valign="middle" align="center" style="width:90px;padding-right:12px;">
+    <img src="https://res.cloudinary.com/dljjmxyef/image/upload/v1779790883/modelos_ASSINATURAS_dmoudo.png" alt="Instituto CEMA" width="90" style="display:block;width:90px;max-width:90px;border:none;outline:none;">
+  </td>`;
+  return wrapTable(logoCol + divider('#006F46') + rightCol('#006F46', v));
+}
+
+function buildInal(v) {
+  var logoCol = `<td width="90" valign="middle" align="center" style="width:90px;padding-right:12px;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr><td align="center" style="padding-bottom:4px;">
+        <img src="https://res.cloudinary.com/dljjmxyef/image/upload/v1779790763/_2935082141296_hblmju.png" width="90" style="display:block;width:90px;max-width:90px;border:none;outline:none;">
+      </td></tr>
+      <tr><td align="center" style="font-family:Arial,sans-serif;">
+        <span style="font-size:9pt;color:#022653;font-weight:bold;"></span>
+      </td></tr>
+    </table>
+  </td>`;
+  return wrapTable(logoCol + divider('#022653') + rightCol('#022653', v));
+}
+
+/* ============================================
+   PREVIEW + GERAÇÃO INDIVIDUAL
+   ============================================ */
+function updatePreview() {
+  var v = getValues();
+  if (!v.empresa) return;
+  var sig = buildSignatureHTML(v);
+  if (!sig) return;
+  var frame = document.getElementById('preview-frame');
+  var empty = document.getElementById('empty-state');
+  var area = document.getElementById('preview-area');
+  empty.classList.add('hidden');
+  frame.classList.remove('hidden');
+  area.style.background = '#fff';
+  area.style.padding = '20px';
+  var doc = frame.contentDocument || frame.contentWindow.document;
+  doc.open();
+  doc.write('<!DOCTYPE html><html><head><style>body{margin:0;padding:0;background:#fff;}</style></head><body>' + sig + '</body></html>');
+  doc.close();
+  setTimeout(function() {
+    try {
+      var h = frame.contentDocument.body.scrollHeight;
+      frame.style.height = (h + 4) + 'px';
+    } catch(e) {}
+  }, 80);
+}
+
+function buildFullHTML(v, sig) {
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Assinatura - ${escHtml(v.nome)}</title>
+</head>
+<body style="margin:0;padding:20px;background:#ffffff;font-family:Arial,sans-serif;">
+${sig}
+</body>
+</html>`;
+}
+
+function generateSignature() {
+  var v = getValues();
+  if (!v.empresa) { alert('Por favor, selecione a empresa antes de gerar a assinatura.'); return; }
+  if (!v.nome) { alert('Informe o nome do colaborador.'); return; }
+  if (!v.email) { alert('Informe o e-mail do colaborador.'); return; }
+
+  updatePreview();
+
+  var sig = buildSignatureHTML(v);
+  var fullHTML = buildFullHTML(v, sig);
+
+  var blob = new Blob([fullHTML], { type: 'text/html;charset=utf-8' });
+  if (lastBlob) URL.revokeObjectURL(lastBlob);
+  lastBlob = URL.createObjectURL(blob);
+
+  var nomeArq = 'Assinatura_' + v.nome.replace(/\s+/g,'_') + '.html';
+  var btn = document.getElementById('btn-download');
+  btn.href = lastBlob;
+  btn.download = nomeArq;
+  btn.classList.remove('hidden');
+  document.getElementById('instructions').classList.remove('hidden');
+}
+
+/* ============================================
+   RESET DO FORMULÁRIO (Gerar Nova)
+   ============================================ */
+function resetForm() {
+  // Limpa estado interno
+  if (lastBlob) { URL.revokeObjectURL(lastBlob); lastBlob = null; }
+  telOn = false;
+
+  // Limpa campos
+  document.getElementById('empresa').value = '';
+  document.getElementById('unidade').value = '';
+  document.getElementById('nome').value = '';
+  document.getElementById('cargo').value = '';
+  document.getElementById('email').value = '';
+  document.getElementById('telefone').value = '';
+
+  // Reset UI
+  document.getElementById('field-unidade').classList.add('hidden');
+  document.getElementById('field-telefone').classList.add('hidden');
+  document.getElementById('toggle-tel').classList.remove('on');
+
+  // Reset preview
+  var frame = document.getElementById('preview-frame');
+  frame.classList.add('hidden');
+  frame.style.height = '0px';
+  try {
+    var doc = frame.contentDocument || frame.contentWindow.document;
+    doc.open(); doc.write(''); doc.close();
+  } catch(e) {}
+  var area = document.getElementById('preview-area');
+  area.style.background = '#f0f2f5';
+  area.style.padding = '24px';
+  document.getElementById('empty-state').classList.remove('hidden');
+
+  // Reset botões pós-geração
+  var btn = document.getElementById('btn-download');
+  btn.classList.add('hidden');
+  btn.removeAttribute('href');
+  btn.removeAttribute('download');
+  document.getElementById('instructions').classList.add('hidden');
+
+  // Foco no primeiro campo
+  document.getElementById('empresa').focus();
+}
+
+/* ============================================
+   MODO LOTE — TEMPLATE CSV
+   ============================================ */
+function downloadCsvTemplate() {
+  var header = 'empresa,unidade,nome,cargo,email,telefone';
+  var rows = [
+    'cema,,Ana Paula Silva,Gerente Comercial,ana.silva@cemahospital.com.br,(11) 3456-7890 | Ramal 210',
+    'cema_unidade,Campinas,Carlos Souza,Coordenador,carlos.souza@cemahospital.com.br,(19) 3344-5566',
+    'oculos_cia,Ribeirão Preto,Mariana Lima,Vendedora,mariana@oculosecia.com.br,',
+    'maxs,,João Pereira,Diretor,joao@maxsotica.com.br,(11) 99999-0000',
+    'so_oculos,,Bruna Alves,Atendente,bruna@sooculos.com.br,',
+    'instituto,,Renato Costa,Coordenador,renato@institutocema.com.br,',
+    'inal,,Patrícia Mendes,Gerente RH,patricia@grupoinal.com.br,(11) 3000-0000 | Ramal 100'
+  ];
+  var csv = '\uFEFF' + header + '\n' + rows.join('\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'modelo_colaboradores.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 500);
+}
+
+/* ============================================
+   CSV PARSER (suporta vírgula, ponto-e-vírgula
+   e campos entre aspas)
+   ============================================ */
+function parseCSV(text) {
+  // Remove BOM
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+  // Detecta separador (linha de cabeçalho)
+  var firstLine = text.split(/\r?\n/)[0] || '';
+  var sep = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
+
+  var rows = [];
+  var cur = [];
+  var field = '';
+  var inQuotes = false;
+  for (var i = 0; i < text.length; i++) {
+    var c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i+1] === '"') { field += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        field += c;
+      }
+    } else {
+      if (c === '"') { inQuotes = true; }
+      else if (c === sep) { cur.push(field); field = ''; }
+      else if (c === '\n') { cur.push(field); rows.push(cur); cur = []; field = ''; }
+      else if (c === '\r') { /* ignora */ }
+      else { field += c; }
+    }
+  }
+  if (field.length > 0 || cur.length > 0) { cur.push(field); rows.push(cur); }
+
+  if (rows.length === 0) return { header: [], data: [] };
+  var header = rows[0].map(function(h){ return h.trim().toLowerCase(); });
+  var data = [];
+  for (var r = 1; r < rows.length; r++) {
+    var row = rows[r];
+    // pula linhas totalmente vazias
+    if (row.length === 1 && row[0].trim() === '') continue;
+    var obj = {};
+    for (var k = 0; k < header.length; k++) {
+      obj[header[k]] = (row[k] || '').trim();
+    }
+    data.push(obj);
+  }
+  return { header: header, data: data };
+}
+
+/* ============================================
+   MODO LOTE — Upload + Processamento
+   ============================================ */
+var csvData = null;
+
+function onCsvSelected() {
+  var fileInput = document.getElementById('csv-file');
+  var info = document.getElementById('csv-info');
+  var btn = document.getElementById('btn-process-batch');
+  var file = fileInput.files && fileInput.files[0];
+
+  // Reset resultados anteriores
+  document.getElementById('batch-results').classList.add('hidden');
+  document.getElementById('batch-list').innerHTML = '';
+  document.getElementById('btn-download-zip').classList.add('hidden');
+  if (lastZipBlob) { URL.revokeObjectURL(lastZipBlob); lastZipBlob = null; }
+
+  if (!file) { btn.disabled = true; info.textContent = 'Aceita arquivos UTF-8 separados por vírgula (,) ou ponto-e-vírgula (;).'; csvData = null; return; }
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var parsed = parseCSV(e.target.result);
+      var required = ['empresa','nome','email'];
+      var missing = required.filter(function(c){ return parsed.header.indexOf(c) === -1; });
+      if (missing.length) {
+        info.style.color = '#b91c1c';
+        info.textContent = '❌ Cabeçalho inválido. Coluna(s) obrigatória(s) ausente(s): ' + missing.join(', ');
+        btn.disabled = true;
+        csvData = null;
+        return;
+      }
+      csvData = parsed.data;
+      info.style.color = '';
+      info.textContent = '✔ ' + csvData.length + ' linha(s) lida(s) de "' + file.name + '". Clique em "Processar lote".';
+      btn.disabled = csvData.length === 0;
+    } catch(err) {
+      info.style.color = '#b91c1c';
+      info.textContent = '❌ Erro ao ler CSV: ' + err.message;
+      btn.disabled = true;
+      csvData = null;
+    }
+  };
+  reader.onerror = function() {
+    info.style.color = '#b91c1c';
+    info.textContent = '❌ Não foi possível ler o arquivo.';
+    btn.disabled = true;
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function validateRow(row) {
+  var errs = [];
+  if (!row.empresa) errs.push('empresa vazia');
+  else if (EMPRESAS_VALIDAS.indexOf(row.empresa) === -1) errs.push('empresa inválida ("' + row.empresa + '")');
+  if (!row.nome) errs.push('nome vazio');
+  if (!row.email) errs.push('email vazio');
+  if (row.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) errs.push('email inválido');
+  if (EMPRESAS_COM_UNIDADE.indexOf(row.empresa) !== -1 && !row.unidade) errs.push('unidade obrigatória para esta empresa');
+  return errs;
+}
+
+function sanitizeFilename(s) {
+  return (s || 'colaborador')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9_\-\s]/g,'')
+    .trim().replace(/\s+/g,'_');
+}
+
+async function processBatch() {
+  if (!csvData || csvData.length === 0) return;
+  if (typeof JSZip === 'undefined') {
+    alert('Biblioteca JSZip não carregou. Verifique sua conexão com a internet e tente novamente.');
+    return;
+  }
+
+  var btn = document.getElementById('btn-process-batch');
+  var label = document.getElementById('btn-process-label');
+  var progressWrap = document.getElementById('progress-wrap');
+  var progressFill = document.getElementById('progress-fill');
+  var list = document.getElementById('batch-list');
+  var resultsBox = document.getElementById('batch-results');
+  var btnZip = document.getElementById('btn-download-zip');
+
+  btn.disabled = true;
+  label.textContent = 'Processando…';
+  list.innerHTML = '';
+  resultsBox.classList.remove('hidden');
+  progressWrap.classList.remove('hidden');
+  progressFill.style.width = '0%';
+  btnZip.classList.add('hidden');
+  if (lastZipBlob) { URL.revokeObjectURL(lastZipBlob); lastZipBlob = null; }
+
+  var zip = new JSZip();
+  var okCount = 0, errCount = 0;
+  var nameCounter = {};
+
+  for (var i = 0; i < csvData.length; i++) {
+    var row = csvData[i];
+    var v = {
+      empresa: (row.empresa || '').toLowerCase().trim(),
+      unidade: row.unidade || '',
+      nome: row.nome || '',
+      cargo: row.cargo || '',
+      email: row.email || '',
+      telefone: row.telefone || '',
+      hasTel: !!row.telefone
+    };
+
+    var errs = validateRow(v);
+    var rowEl = document.createElement('div');
+    rowEl.className = 'batch-row';
+
+    if (errs.length) {
+      errCount++;
+      rowEl.innerHTML =
+        '<div class="status status-err">✕</div>' +
+        '<div class="info">' +
+          '<b>' + escHtml(v.nome || '(sem nome)') + '</b>' +
+          '<small>' + escHtml(v.email || '—') + ' · linha ' + (i+2) + '</small>' +
+          '<div class="err-msg">⚠ ' + escHtml(errs.join('; ')) + '</div>' +
+        '</div>';
+    } else {
+      try {
+        var sig = buildSignatureHTML(v);
+        var fullHTML = buildFullHTML(v, sig);
+        var base = sanitizeFilename(v.nome) + '_' + v.empresa;
+        nameCounter[base] = (nameCounter[base] || 0) + 1;
+        var suffix = nameCounter[base] > 1 ? ('_' + nameCounter[base]) : '';
+        var filename = 'Assinatura_' + base + suffix + '.html';
+        zip.file(filename, fullHTML);
+        okCount++;
+        rowEl.innerHTML =
+          '<div class="status status-ok">✓</div>' +
+          '<div class="info">' +
+            '<b>' + escHtml(v.nome) + '</b> &nbsp;<span style="color:var(--muted);font-size:12px;">[' + escHtml(v.empresa) + (v.unidade ? ' · ' + escHtml(v.unidade) : '') + ']</span>' +
+            '<small>' + escHtml(v.email) + ' → ' + escHtml(filename) + '</small>' +
+          '</div>';
+      } catch(e) {
+        errCount++;
+        rowEl.innerHTML =
+          '<div class="status status-err">✕</div>' +
+          '<div class="info">' +
+            '<b>' + escHtml(v.nome || '(sem nome)') + '</b>' +
+            '<small>linha ' + (i+2) + '</small>' +
+            '<div class="err-msg">⚠ Erro ao gerar: ' + escHtml(e.message) + '</div>' +
+          '</div>';
+      }
+    }
+    list.appendChild(rowEl);
+
+    document.getElementById('count-ok').textContent = okCount + ' sucesso';
+    document.getElementById('count-err').textContent = errCount + ' erro(s)';
+    progressFill.style.width = (((i+1) / csvData.length) * 100).toFixed(1) + '%';
+
+    // dá respiro ao DOM em lotes grandes
+    if (i % 20 === 19) await new Promise(function(r){ setTimeout(r, 0); });
+  }
+
+  // Gera ZIP se houver pelo menos 1 sucesso
+  if (okCount > 0) {
+    label.textContent = 'Compactando .zip…';
+    try {
+      var blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+      lastZipBlob = URL.createObjectURL(blob);
+      btnZip.href = lastZipBlob;
+      var ts = new Date();
+      var stamp = ts.getFullYear() + ('0'+(ts.getMonth()+1)).slice(-2) + ('0'+ts.getDate()).slice(-2) + '_' + ('0'+ts.getHours()).slice(-2) + ('0'+ts.getMinutes()).slice(-2);
+      btnZip.download = 'assinaturas_lote_' + stamp + '.zip';
+      btnZip.classList.remove('hidden');
+    } catch(e) {
+      alert('Erro ao gerar .zip: ' + e.message);
+    }
+  }
+
+  label.textContent = 'Processar lote';
+  btn.disabled = false;
+  progressFill.style.width = '100%';
+}
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
